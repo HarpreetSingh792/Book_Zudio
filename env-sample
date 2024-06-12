@@ -1,0 +1,4 @@
+DB_NAME= your db_Name
+PORT=4000
+MONGO_URI= your mongodb URI
+JWT_SECRET=your JWT_SECRET
