@@ -208,6 +208,7 @@ export const filter = asyncHandler(async (req, res, next) => {
 export const delBook = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const book = await Books.findById(id);
+  if(!book) return next(new ErrorHandler(404,"Book not found"))
   await deleteFromCloudinary(book.photo[0]?.public_id)
   await Books.findByIdAndDelete(id);
   res.status(200).json({
