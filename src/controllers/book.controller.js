@@ -2,6 +2,10 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import { Books } from "../models/books.js";
 import { rm } from "fs";
+import {
+  deleteFromCloudinary,
+  uploadImageToCloudinary,
+} from "../utils/cloudinary.js";
 
 export const uploadBooks = asyncHandler(async (req, res, next) => {
   const {
@@ -32,6 +36,7 @@ export const uploadBooks = asyncHandler(async (req, res, next) => {
     next(new ErrorHandler(400, "Please fill all the fields"));
   }
 
+  const image = await uploadImageToCloudinary(photo?.path);
   await Books.create({
     author: author.toLowerCase(),
     title: title.toLowerCase(),
@@ -40,8 +45,8 @@ export const uploadBooks = asyncHandler(async (req, res, next) => {
     price,
     category,
     available: available.split(","),
-    photo: photo?.path,
-    isbn: isbn.replace("-",""),
+    photo: image,
+    isbn: isbn.replace("-", ""),
   });
 
   res.status(201).json({
@@ -74,9 +79,12 @@ export const changedCoverPic = asyncHandler(async (req, res, next) => {
     rm(book.photo, () => {
       console.log(`Deleted cover pic ${book.photo}`);
     });
+
+    await deleteFromCloudinary(book.photo?.public_id);
   }
 
-  book.photo = photo.path;
+  const image = await uploadImageToCloudinary(photo?.path);
+  book.photo = image;
   await book.save({ validateBeforeSave: false });
 
   res.status(200).json({
@@ -184,21 +192,23 @@ export const filter = asyncHandler(async (req, res, next) => {
     };
   }
 
-  const book = await Books.find(searchQuery).sort(
-    sort && { price: sort === "asc" ? 1 : -1 }
-  ).limit(limit).skip(skip);
+  const book = await Books.find(searchQuery)
+    .sort(sort && { price: sort === "asc" ? 1 : -1 })
+    .limit(limit)
+    .skip(skip);
 
-  const totalPage = Math.ceil(book.length/limit);
+  const totalPage = Math.ceil(book.length / limit);
   res.status(200).json({
     success: true,
     book,
-    totalPage
+    totalPage,
   });
-
 });
 
 export const delBook = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
+  const book = await Books.findById(id);
+  await deleteFromCloudinary(book.photo[0]?.public_id)
   await Books.findByIdAndDelete(id);
   res.status(200).json({
     success: true,
